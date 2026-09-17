@@ -2,6 +2,7 @@ import { CheckCircle2, ImageIcon, UploadIcon } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
 import {
+  ACCEPTED_IMAGE_TYPES,
   PROGRESS_INTERVAL_MS,
   PROGRESS_STEP,
   REDIRECT_DELAY_MS,
@@ -15,6 +16,7 @@ const Upload = ({ onComplete }: UploadProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const { isSignedIn } = useOutletContext<AuthContext>();
 
@@ -29,12 +31,19 @@ const Upload = ({ onComplete }: UploadProps) => {
   const processFile = (selected: File) => {
     if (!isSignedIn) return;
 
+    if (!ACCEPTED_IMAGE_TYPES.includes(selected.type)) {
+      setError("Only JPG and PNG files are supported.");
+      return;
+    }
+
+    setError(null);
     setFile(selected);
     setProgress(0);
 
     const reader = new FileReader();
     reader.onerror = () => {
       console.error("Failed to read file: ", reader.error);
+      setError("Could not read that file. Try again.");
       setFile(null);
     };
     reader.onload = () => {
@@ -102,6 +111,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                 : "Sign in or Sign up with puter to upload "}
             </p>
             <p className="help">Maximum file size 50MB</p>
+            {error && <p className="error">{error}</p>}
           </div>
         </div>
       ) : (
