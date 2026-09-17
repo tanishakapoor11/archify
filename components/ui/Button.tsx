@@ -1,5 +1,5 @@
 type ButtonProps = React.ComponentProps<"button"> & {
-  variant?: "primary" | "secondary" | "ghost";
+  variant?: "primary" | "secondary" | "ghost" | "outline" | "link";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
 };
