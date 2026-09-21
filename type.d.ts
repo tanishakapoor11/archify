@@ -94,17 +94,26 @@ type AuthContext = {
     signOut: () => Promise<boolean>;
 };
 
-type AuthRequiredModalProps = {
-    isOpen: boolean;
-    onConfirm: () => void;
-    onCancel: () => void;
-    title?: string;
-    description?: string;
-    confirmLabel?: string;
-};
-
 type ShareAction = "share" | "unshare";
 type ShareStatus = "idle" | "saving" | "done";
+
+type ModalProps = {
+    isOpen: boolean;
+    onClose: () => void;
+    labelledBy: string;
+    focusKey?: string | number;
+    children: React.ReactNode;
+};
+
+type ShareModalProps = {
+    isOpen: boolean;
+    isPublic: boolean;
+    status: ShareStatus;
+    shareUrl: string;
+    error?: string | null;
+    onConfirm: () => void;
+    onClose: () => void;
+};
 
 type HostingConfig = { subdomain: string };
 type HostedAsset = { url: string };
