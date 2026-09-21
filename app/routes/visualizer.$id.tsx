@@ -1,32 +1,53 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import {
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from "react-router";
 import { generate3DView } from "../../lib/ai.action";
 import { Box, Download, RefreshCcw, Share2, X } from "lucide-react";
 import { Button } from "../../components/ui/Button";
+import { createProject, getProjectById } from "../../lib/puter.actions";
 
 const VisualizerId = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { initialImage, initialRender, name } = location.state || {};
+  const { userId } = useOutletContext<AuthContext>();
 
   const hasInitialGenerated = useRef(false);
 
+  const [project, setProject] = useState<DesignItem | null>(null);
+  const [isProjectLoading, setIsProjectLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentImage, setCurrentImage] = useState<string | null>(
-    initialRender || null,
-  );
+  const [currentImage, setCurrentImage] = useState<string | null>(null);
 
   const handleBack = () => navigate("/");
 
-  const runGeneration = async () => {
-    if (!initialImage) return;
+  const runGeneration = async (item: DesignItem) => {
+    if (!id || !item.sourceImage) return;
     try {
       setIsProcessing(true);
-      const result = await generate3DView({ sourceImage: initialImage });
+      const result = await generate3DView({ sourceImage: item.sourceImage });
       if (result.renderedImage) {
-        setCurrentImage(result.renderedImage);
-
-        //update the project with the rendered image.
+        const updatedItem = {
+          ...item,
+          renderedImage: result.renderedImage,
+          renderedPath: result.renderedPath,
+          timestamp: Date.now(),
+          ownerId: item.ownerId ?? userId ?? null,
+          isPublic: item.isPublic ?? false,
+        };
+        const saved = await createProject({
+          item: updatedItem,
+          visibility: "private",
+        });
+        if (saved?.renderedImage) {
+          setProject(saved);
+          setCurrentImage(saved.renderedImage);
+        } else {
+          console.error("Render was generated but could not be saved.");
+        }
       }
     } catch (error) {
       console.error("Generation failed", error);
@@ -36,15 +57,50 @@ const VisualizerId = () => {
   };
 
   useEffect(() => {
-    if (!initialImage || hasInitialGenerated.current) return;
-    if (initialRender) {
-      setCurrentImage(initialRender);
+    let isMounted = true;
+
+    const loadProject = async () => {
+      if (!id) {
+        setIsProjectLoading(false);
+        return;
+      }
+
+      setIsProjectLoading(true);
+
+      const fetchedProject = await getProjectById({ id });
+
+      if (!isMounted) return;
+
+      setProject(fetchedProject);
+      setCurrentImage(fetchedProject?.renderedImage || null);
+      setIsProjectLoading(false);
+      hasInitialGenerated.current = false;
+    };
+
+    loadProject();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (
+      isProjectLoading ||
+      hasInitialGenerated.current ||
+      !project?.sourceImage
+    )
+      return;
+
+    if (project.renderedImage) {
+      setCurrentImage(project.renderedImage);
       hasInitialGenerated.current = true;
       return;
     }
+
     hasInitialGenerated.current = true;
-    runGeneration();
-  }, [initialImage, initialRender]);
+    void runGeneration(project);
+  }, [project, isProjectLoading]);
 
   return (
     <div className="visualizer">
@@ -59,52 +115,91 @@ const VisualizerId = () => {
       </nav>
       <section className="content">
         <div className="panel">
-          <div className="panel-header">
-            <div className="panel-meta">
-              <p>Project</p>
-              <h2>{"Untitled Project"}</h2>
-              <p className="note">Created by You</p>
-            </div>
-            <div className="panel-actions">
-              <Button
-                size="sm"
-                className="export"
-                disabled={!currentImage}
-                onClick={() => {}}
-              >
-                <Download className="w-4 h-4 mr-2" /> Export
-              </Button>
-              <Button
-                size="sm"
-                className="share"
-                disabled={!currentImage}
-                onClick={() => {}}
-              >
-                <Share2 className="w-4 h-4 mr-2" /> Share
-              </Button>
-            </div>
-          </div>
-          <div className={`render-area ${isProcessing ? 'is-processing' : ''}`}>
-            {currentImage ? (
-              <img src={currentImage} alt='AI Render' className='render-img' />
-            ): (
-              <div className="render-placeholder">
-                {initialImage && (
-                  <img src={initialImage} alt="original" className="render-fallback" />
-                )}
-              </div>
-            )}
-
-            {isProcessing && (
+          {isProjectLoading ? (
+            <div className="render-area">
               <div className="render-overlay">
                 <div className="rendering-card">
                   <RefreshCcw className="spinner" />
-                  <span className="title">Rendering...</span>
-                  <span className="subtitle">Generating your 3D visualization</span>
+                  <span className="title">Loading project...</span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : !project ? (
+            <div className="render-area">
+              <div className="render-overlay">
+                <div className="rendering-card">
+                  <span className="title">Project not found</span>
+                  <span className="subtitle">
+                    This project doesn't exist or could not be loaded.
+                  </span>
+                  <Button size="sm" className="mt-4" onClick={handleBack}>
+                    Back to projects
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="panel-header">
+                <div className="panel-meta">
+                  <p>Project</p>
+                  <h2>{project?.name || `Residence ${id}`}</h2>
+                  <p className="note">Created by You</p>
+                </div>
+                <div className="panel-actions">
+                  <Button
+                    size="sm"
+                    className="export"
+                    disabled={!currentImage}
+                    onClick={() => {}}
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Export
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="share"
+                    disabled={!currentImage}
+                    onClick={() => {}}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" /> Share
+                  </Button>
+                </div>
+              </div>
+              <div
+                className={`render-area ${isProcessing ? "is-processing" : ""}`}
+              >
+                {currentImage ? (
+                  <img
+                    src={currentImage}
+                    alt="AI Render"
+                    className="render-img"
+                  />
+                ) : (
+                  <div className="render-placeholder">
+                    {project?.sourceImage && (
+                      <img
+                        src={project?.sourceImage}
+                        alt="original"
+                        className="render-fallback"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {isProcessing && (
+                  <div className="render-overlay">
+                    <div className="rendering-card">
+                      <RefreshCcw className="spinner" />
+                      <span className="title">Rendering...</span>
+                      <span className="subtitle">
+                        Generating your 3D visualization
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </section>
     </div>
