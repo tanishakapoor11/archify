@@ -60,6 +60,11 @@ export const createProject = async ({
     : item.renderedImage &&
       (isHostedUrl(item.renderedImage) ? item.renderedImage : undefined);
 
+  if (item.renderedImage && !resolvedRender) {
+    console.warn("Failed to host rendered image, skipping save.");
+    return null;
+  }
+
   const {
     sourcePath: _sourcePath,
     renderedPath: _renderedPath,

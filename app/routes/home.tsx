@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import Upload from "../../components/Upload";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { createProject, getProjects } from "../../lib/puter.actions";
 
@@ -26,9 +26,9 @@ export default function Home() {
   const isCreatingProjectRef = useRef(false);
 
   const handleUploadComplete = async (base64Image: string) => {
+    if (isCreatingProjectRef.current) return false;
+    isCreatingProjectRef.current = true;
     try {
-      if (isCreatingProjectRef.current) return false;
-      isCreatingProjectRef.current = true;
       const newId = Date.now().toString(); // Generate a unique ID for the uploaded file
 
       const name = `Residence ${newId}`;
@@ -69,7 +69,7 @@ export default function Home() {
       setProjects(items)
     }
     fetchProjects();
-   })
+  }, []);
 
   return (
     <div className={"home"}>
@@ -125,7 +125,11 @@ export default function Home() {
           <div className="projects-grid">
             {projects.map(
               ({ id, name, renderedImage, sourceImage, timestamp }) => (
-                <div key={id} className="project-card group" onClick={() => navigate(`/visualizer/${id}`)}>
+                <Link
+                  key={id}
+                  to={`/visualizer/${id}`}
+                  className="project-card group"
+                >
                   <div className="preview">
                     <img src={renderedImage || sourceImage} alt="Project" />
                     <div className="badge">
@@ -145,7 +149,7 @@ export default function Home() {
                       <ArrowUpRight size="18" />
                     </div>
                   </div>
-                </div>
+                </Link>
               ),
             )}
           </div>
