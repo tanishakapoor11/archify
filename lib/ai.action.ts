@@ -1,5 +1,5 @@
 import puter from "@heyputer/puter.js";
-import { GENERATION_TIMEOUT_MS, ROOMIFY_RENDER_PROMPT } from "./constants";
+import { GENERATION_TIMEOUT_MS, ARCHIFY_RENDER_PROMPT } from "./constants";
 
 export const fetchAsDataUrl = async (url: string): Promise<string> => {
   const response = await fetch(url);
@@ -28,7 +28,7 @@ export const generate3DView = async ({ sourceImage }: Generate3DViewParams) => {
   // puter.ai has no timeout of its own, so a stalled call would hang the
   // render overlay indefinitely.
   const response = await Promise.race([
-    puter.ai.txt2img(ROOMIFY_RENDER_PROMPT, {
+    puter.ai.txt2img(ARCHIFY_RENDER_PROMPT, {
       provider: "gemini",
       model: "gemini-2.5-flash-image-preview",
       input_image: base64Data,

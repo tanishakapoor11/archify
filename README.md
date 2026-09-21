@@ -39,11 +39,14 @@ It uses two Puter identities:
 
 | Identity | Scope | Holds |
 | --- | --- | --- |
-| `user.puter.kv` | the calling user, isolated | private projects (`roomify_project_<id>`) |
-| `me.puter.kv` | the worker app, shared by all callers | published copies (`roomify_public_<id>`) |
+| `user.puter.kv` | the calling user, isolated | private projects (`archify_project_<id>`) |
+| `me.puter.kv` | the worker app, shared by all callers | published copies (`archify_public_<id>`) |
 
 Because every caller can write to `me.puter.kv`, each mutation checks
 `ownerId` before touching a published record.
+
+Records written before the `roomify` → `archify` rename are still read from
+the old prefixes; the next save rewrites them under the new ones.
 
 ### Routes
 

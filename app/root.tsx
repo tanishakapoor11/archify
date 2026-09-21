@@ -17,6 +17,10 @@ import {
 } from "../lib/puter.actions";
 
 export const links: Route.LinksFunction = () => [
+  // SVG first so browsers that support it pick up the light/dark variant;
+  // the .ico stays as the fallback for those that don't.
+  { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  { rel: "alternate icon", href: "/favicon.ico", sizes: "48x48" },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",

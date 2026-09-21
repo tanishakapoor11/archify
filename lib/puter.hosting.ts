@@ -5,17 +5,19 @@ import {
   getHostedUrl,
   getImageExtension,
   HOSTING_CONFIG_KEY,
+  LEGACY_HOSTING_CONFIG_KEY,
   imageUrlToDisplayBlob,
   isHostedUrl,
 } from "./utils";
 
 export const getOrCreateHostingConfig =
   async (): Promise<HostingConfig | null> => {
-    const existing = (await puter.kv.get(
-      HOSTING_CONFIG_KEY,
-    )) as HostingConfig | null;
+    const existing = ((await puter.kv.get(HOSTING_CONFIG_KEY)) ||
+      (await puter.kv.get(LEGACY_HOSTING_CONFIG_KEY))) as HostingConfig | null;
 
     if (existing?.subdomain) {
+      // Reusing the existing site keeps every already-hosted image URL valid.
+      await puter.kv.set(HOSTING_CONFIG_KEY, existing);
       return { subdomain: existing.subdomain };
     }
     const subdomain = createHostingSlug();
