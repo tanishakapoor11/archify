@@ -15,7 +15,10 @@ export const PROGRESS_INTERVAL_MS = 100;
 export const PROGRESS_STEP = 5;
 
 // Uploads
-export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export const ACCEPTED_IMAGE_LABEL = ACCEPTED_IMAGE_TYPES.map((type) =>
+    type.replace("image/", "").replace("jpeg", "jpg").toUpperCase(),
+).join(", ");
 
 // UI Constants
 export const GRID_OVERLAY_SIZE = "60px 60px";

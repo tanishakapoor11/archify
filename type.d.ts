@@ -116,9 +116,15 @@ interface StoreHostedImageParams {
     label: "source" | "rendered";
 }
 
+type ProjectVisibility = "private" | "public";
+
 interface CreateProjectParams {
     item: DesignItem;
-    visibility?: "private" | "public";
+}
+
+interface SetProjectVisibilityParams {
+    id: string;
+    visibility: ProjectVisibility;
 }
 
 interface Generate3DViewParams {

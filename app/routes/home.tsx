@@ -9,9 +9,10 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import Upload from "../../components/Upload";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useOutletContext } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { createProject, getProjects } from "../../lib/puter.actions";
+import { ACCEPTED_IMAGE_LABEL } from "../../lib/constants";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -22,6 +23,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const { userId } = useOutletContext<AuthContext>();
   const [projects, setProjects] = useState<DesignItem[]>([]);
   const isCreatingProjectRef = useRef(false);
 
@@ -41,10 +43,7 @@ export default function Home() {
         timestamp: Date.now(),
       };
 
-      const saved = await createProject({
-        item: newItem,
-        visibility: "private",
-      });
+      const saved = await createProject({ item: newItem });
       if (!saved) {
         console.error("Failed to create project.");
         return false;
@@ -64,10 +63,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const fetchProjects = async() => {
+    const fetchProjects = async () => {
       const items = await getProjects();
-      setProjects(items)
-    }
+      setProjects(items);
+    };
     fetchProjects();
   }, []);
 
@@ -104,7 +103,7 @@ export default function Home() {
                 <Layers className="icon" />
               </div>
               <h3>Upload your floor plan</h3>
-              <p>Supports JPG, PNG, formats up to 10MB </p>
+              <p>Supports {ACCEPTED_IMAGE_LABEL} formats up to 10MB</p>
             </div>
             <Upload onComplete={handleUploadComplete} />
           </div>
@@ -124,33 +123,51 @@ export default function Home() {
           </div>
           <div className="projects-grid">
             {projects.map(
-              ({ id, name, renderedImage, sourceImage, timestamp }) => (
-                <Link
-                  key={id}
-                  to={`/visualizer/${id}`}
-                  className="project-card group"
-                >
-                  <div className="preview">
-                    <img src={renderedImage || sourceImage} alt="Project" />
-                    <div className="badge">
-                      <span>Community</span>
+              ({
+                id,
+                name,
+                renderedImage,
+                sourceImage,
+                timestamp,
+                ownerId,
+                isPublic,
+                sharedBy,
+              }) => {
+                const isMine = !ownerId || ownerId === userId;
+                return (
+                  <Link
+                    key={id}
+                    to={`/visualizer/${id}`}
+                    className="project-card group"
+                  >
+                    <div className="preview">
+                      <img src={renderedImage || sourceImage} alt="Project" />
+                      {(!isMine || isPublic) && (
+                        <div className="badge">
+                          <span>{isMine ? "Public" : "Community"}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="card-body">
-                    <div>
-                      <h3>{name}</h3>
-                      <div className="meta">
-                        <Clock size="12" />
-                        <span>{new Date(timestamp).toLocaleDateString()}</span>
-                        <span>By Tanisha</span>
+                    <div className="card-body">
+                      <div>
+                        <h3>{name}</h3>
+                        <div className="meta">
+                          <Clock size="12" />
+                          <span>
+                            {new Date(timestamp).toLocaleDateString()}
+                          </span>
+                          <span>
+                            By {isMine ? "you" : sharedBy || "another user"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="arrow">
+                        <ArrowUpRight size="18" />
                       </div>
                     </div>
-                    <div className="arrow">
-                      <ArrowUpRight size="18" />
-                    </div>
-                  </div>
-                </Link>
-              ),
+                  </Link>
+                );
+              },
             )}
           </div>
         </div>

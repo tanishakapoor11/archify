@@ -2,6 +2,7 @@ import { CheckCircle2, ImageIcon, UploadIcon } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
 import {
+  ACCEPTED_IMAGE_LABEL,
   ACCEPTED_IMAGE_TYPES,
   PROGRESS_INTERVAL_MS,
   PROGRESS_STEP,
@@ -32,7 +33,7 @@ const Upload = ({ onComplete }: UploadProps) => {
     if (!isSignedIn) return;
 
     if (!ACCEPTED_IMAGE_TYPES.includes(selected.type)) {
-      setError("Only JPG and PNG files are supported.");
+      setError(`Only ${ACCEPTED_IMAGE_LABEL} files are supported.`);
       return;
     }
 
@@ -97,7 +98,7 @@ const Upload = ({ onComplete }: UploadProps) => {
           <input
             type="file"
             className="drop-input"
-            accept=".jpg,.jpeg,.png"
+            accept={ACCEPTED_IMAGE_TYPES.join(",")}
             disabled={!isSignedIn}
             onChange={handleChange}
           />

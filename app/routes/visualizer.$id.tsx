@@ -8,7 +8,17 @@ import {
 import { generate3DView } from "../../lib/ai.action";
 import { Box, Download, RefreshCcw, Share2, X } from "lucide-react";
 import { Button } from "../../components/ui/Button";
-import { createProject, getProjectById } from "../../lib/puter.actions";
+import {
+  createProject,
+  getProjectById,
+  setProjectVisibility,
+} from "../../lib/puter.actions";
+import { SHARE_STATUS_RESET_DELAY_MS } from "../../lib/constants";
+import { fetchBlobFromUrl, getImageExtension } from "../../lib/utils";
+import {
+  ReactCompareSlider,
+  ReactCompareSliderImage,
+} from "react-compare-slider";
 
 const VisualizerId = () => {
   const { id } = useParams();
@@ -21,8 +31,53 @@ const VisualizerId = () => {
   const [isProjectLoading, setIsProjectLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
+
+  const isPublic = !!project?.isPublic;
+  const isOwner = !!project?.ownerId && project.ownerId === userId;
 
   const handleBack = () => navigate("/");
+
+  const handleExport = async () => {
+    if (!currentImage) return;
+
+    // currentImage is either a data: URL from a fresh render or a cross-origin
+    // .puter.site URL, where the anchor download attribute is ignored.
+    const resolved = await fetchBlobFromUrl(currentImage);
+    if (!resolved) {
+      console.error("Failed to download the render.");
+      return;
+    }
+
+    const ext = getImageExtension(resolved.contentType, currentImage);
+    const base = (project?.name || `residence-${id}`)
+      .trim()
+      .replace(/[^\w.-]+/g, "-");
+    const href = URL.createObjectURL(resolved.blob);
+
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `${base}.${ext}`;
+    link.click();
+
+    setTimeout(() => URL.revokeObjectURL(href), 0);
+  };
+
+  const handleToggleShare = async () => {
+    if (!id || !project || shareStatus === "saving") return;
+    setShareStatus("saving");
+    const updated = await setProjectVisibility({
+      id,
+      visibility: isPublic ? "private" : "public",
+    });
+    if (!updated) {
+      setShareStatus("idle");
+      return;
+    }
+    setProject(updated);
+    setShareStatus("done");
+    setTimeout(() => setShareStatus("idle"), SHARE_STATUS_RESET_DELAY_MS);
+  };
 
   const runGeneration = async (item: DesignItem) => {
     if (!id || !item.sourceImage) return;
@@ -38,10 +93,7 @@ const VisualizerId = () => {
           ownerId: item.ownerId ?? userId ?? null,
           isPublic: item.isPublic ?? false,
         };
-        const saved = await createProject({
-          item: updatedItem,
-          visibility: "private",
-        });
+        const saved = await createProject({ item: updatedItem });
         if (saved?.renderedImage) {
           setProject(saved);
           setCurrentImage(saved.renderedImage);
@@ -144,24 +196,39 @@ const VisualizerId = () => {
                 <div className="panel-meta">
                   <p>Project</p>
                   <h2>{project?.name || `Residence ${id}`}</h2>
-                  <p className="note">Created by You</p>
+                  <p className="note">
+                    {isOwner
+                      ? isPublic
+                        ? "Shared publicly by you"
+                        : "Created by You"
+                      : `Shared by ${project?.sharedBy || "another user"}`}
+                  </p>
                 </div>
                 <div className="panel-actions">
                   <Button
                     size="sm"
                     className="export"
                     disabled={!currentImage}
-                    onClick={() => {}}
+                    onClick={handleExport}
                   >
                     <Download className="w-4 h-4 mr-2" /> Export
                   </Button>
                   <Button
                     size="sm"
                     className="share"
-                    disabled={!currentImage}
-                    onClick={() => {}}
+                    disabled={
+                      !currentImage || !isOwner || shareStatus === "saving"
+                    }
+                    onClick={handleToggleShare}
                   >
-                    <Share2 className="w-4 h-4 mr-2" /> Share
+                    <Share2 className="w-4 h-4 mr-2" />
+                    {shareStatus === "saving"
+                      ? "Saving..."
+                      : shareStatus === "done"
+                        ? "Saved"
+                        : isPublic
+                          ? "Make private"
+                          : "Share"}
                   </Button>
                 </div>
               </div>
@@ -200,6 +267,47 @@ const VisualizerId = () => {
               </div>
             </>
           )}
+          <div className="panel compare">
+            <div className="panel-header">
+              <div className="panel-meta">
+                <p>Comparison</p>
+                <h3>Before & After</h3>
+              </div>
+              <div className="hint">Drag to compare</div>
+            </div>
+            <div className="compare-stage">
+              {project?.sourceImage && currentImage ? (
+                <ReactCompareSlider
+                  defaultValue={50}
+                  style={{ width: "100%", height: "auto" }}
+                  itemOne={
+                    <ReactCompareSliderImage
+                      src={project?.sourceImage}
+                      alt="before"
+                      className="compare-img"
+                    />
+                  }
+                  itemTwo={
+                    <ReactCompareSliderImage
+                      src={currentImage}
+                      alt="after"
+                      className="compare-img"
+                    />
+                  }
+                />
+              ) : (
+                <div className="compare-fallback">
+                  {project?.sourceImage && (
+                    <img
+                      src={project.sourceImage}
+                      alt="Before"
+                      className="compare-img"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
     </div>
