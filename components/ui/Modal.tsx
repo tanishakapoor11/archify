@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 const FOCUSABLE =
   'button:not([disabled]), input, a[href], [tabindex]:not([tabindex="-1"])';
@@ -9,6 +10,8 @@ export function Modal({
   onClose,
   labelledBy,
   focusKey,
+  size = "md",
+  showClose,
   children,
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -66,13 +69,23 @@ export function Modal({
   // fixed children, which would pin the overlay inside that ancestor's box.
   return createPortal(
     <div
-      className="modal"
+      className={size === "wide" ? "modal modal--wide" : "modal"}
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="panel" ref={panelRef}>
+        {showClose && (
+          <button
+            type="button"
+            className="modal-close"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
         {children}
       </div>
     </div>,

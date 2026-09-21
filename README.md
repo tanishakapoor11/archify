@@ -69,3 +69,18 @@ Exercises the worker's visibility and ownership rules against stubbed
 npm run build
 npm run typecheck
 ```
+
+## Deploying
+
+`VITE_PUTER_WORKER_URL` is inlined by Vite **at build time**, not read at
+runtime. It must be present in the environment that runs `npm run build`, or
+every worker call silently no-ops in the deployed app.
+
+```bash
+docker build --build-arg VITE_PUTER_WORKER_URL=https://<your-worker>.puter.work -t archify .
+docker run -p 3000:3000 archify
+```
+
+The build fails loudly if the arg is missing. Redeploy
+[`lib/puter.worker.js`](lib/puter.worker.js) to Puter separately whenever it
+changes — it is not part of this bundle.

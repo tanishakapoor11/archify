@@ -68,7 +68,10 @@ interface VisualizerProps {
 }
 
 interface UploadProps {
-    onComplete: (base64File: string) => Promise<boolean | void> | boolean | void;
+    onComplete: (
+        base64File: string,
+        fileName?: string,
+    ) => Promise<boolean | void> | boolean | void;
     className?: string;
 }
 
@@ -94,6 +97,8 @@ type AuthContext = {
     signOut: () => Promise<boolean>;
 };
 
+type StageView = "plan" | "compare" | "render";
+
 type ShareAction = "share" | "unshare";
 type ShareStatus = "idle" | "saving" | "done";
 
@@ -102,6 +107,8 @@ type ModalProps = {
     onClose: () => void;
     labelledBy: string;
     focusKey?: string | number;
+    size?: "md" | "wide";
+    showClose?: boolean;
     children: React.ReactNode;
 };
 
@@ -113,6 +120,16 @@ type ShareModalProps = {
     error?: string | null;
     onConfirm: () => void;
     onClose: () => void;
+};
+
+type ProjectGridProps = {
+    projects: DesignItem[];
+    isLoading: boolean;
+    userId: string | null;
+    isSignedIn: boolean;
+    onSignIn: () => void;
+    /** Cap the number of cards rendered; omit to show all. */
+    limit?: number;
 };
 
 type HostingConfig = { subdomain: string };

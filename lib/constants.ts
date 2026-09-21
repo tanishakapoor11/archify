@@ -24,6 +24,9 @@ export const ACCEPTED_IMAGE_LABEL = ACCEPTED_IMAGE_TYPES.map((type) =>
 export const MAX_FILE_SIZE_MB = 10;
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
+// Cards shown on the landing page before linking out to /projects
+export const HOME_PROJECT_LIMIT = 3;
+
 // UI Constants
 export const GRID_OVERLAY_SIZE = "60px 60px";
 export const GRID_COLOR = "#3B82F6";

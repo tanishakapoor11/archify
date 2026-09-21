@@ -21,6 +21,7 @@ const Upload = ({ onComplete }: UploadProps) => {
   const { isSignedIn } = useOutletContext<AuthContext>();
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handedOffRef = useRef(false);
   useEffect(
     () => () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -30,16 +31,19 @@ const Upload = ({ onComplete }: UploadProps) => {
 
   // The progress bar is cosmetic and finishes before the real work starts, so
   // the hand-off has to report its own failure or the user is stranded here.
-  const handOff = async (base64: string) => {
+  const handOff = async (base64: string, fileName: string) => {
+    if (handedOffRef.current) return;
+    handedOffRef.current = true;
     setIsSaving(true);
     try {
-      const ok = await onComplete(base64);
+      const ok = await onComplete(base64, fileName);
       if (ok === false) throw new Error("save rejected");
     } catch (e) {
       console.error("Failed to create project: ", e);
       setError("Could not save that project. Please try again.");
       setFile(null);
       setProgress(0);
+      handedOffRef.current = false;
     } finally {
       setIsSaving(false);
     }
@@ -61,6 +65,7 @@ const Upload = ({ onComplete }: UploadProps) => {
     setError(null);
     setFile(selected);
     setProgress(0);
+    handedOffRef.current = false;
 
     const reader = new FileReader();
     reader.onerror = () => {
@@ -71,15 +76,20 @@ const Upload = ({ onComplete }: UploadProps) => {
     reader.onload = () => {
       const base64 = reader.result as string;
 
+      // React may process a state updater more than once, so completion is
+      // tracked here rather than inside setProgress: a bunched-up tick would
+      // otherwise fire the hand-off twice and the duplicate looks like an error.
+      let pct = 0;
       intervalRef.current = setInterval(() => {
-        setProgress((prev) => {
-          const next = prev + PROGRESS_STEP;
-          if (next < 100) return next;
+        pct = Math.min(100, pct + PROGRESS_STEP);
+        setProgress(pct);
+        if (pct < 100) return;
 
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          setTimeout(() => void handOff(base64), REDIRECT_DELAY_MS);
-          return 100;
-        });
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        setTimeout(() => void handOff(base64, selected.name), REDIRECT_DELAY_MS);
       }, PROGRESS_INTERVAL_MS);
     };
     reader.readAsDataURL(selected);

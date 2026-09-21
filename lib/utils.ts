@@ -88,7 +88,12 @@ export const fetchBlobFromUrl = async (
     }
 };
 
-export const imageUrlToPngBlob = async (url: string): Promise<Blob | null> => {
+// Renders come back as ~1 MB PNGs. They are photographic, so WebP stores them
+// at a fraction of the size with no visible loss, and every card on the home
+// page downloads one.
+export const imageUrlToDisplayBlob = async (
+    url: string,
+): Promise<{ blob: Blob; contentType: string } | null> => {
     if (typeof window === "undefined") return null;
 
     try {
@@ -113,10 +118,28 @@ export const imageUrlToPngBlob = async (url: string): Promise<Blob | null> => {
 
         ctx.drawImage(loaded, 0, 0, width, height);
 
-        return await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob((result) => resolve(result), "image/png");
-        });
+        const encode = (type: string, quality?: number) =>
+            new Promise<Blob | null>((resolve) =>
+                canvas.toBlob((result) => resolve(result), type, quality),
+            );
+
+        const webp = await encode("image/webp", 0.9);
+        if (webp?.type === "image/webp") return { blob: webp, contentType: "image/webp" };
+
+        // Very old browsers silently hand back a PNG instead of WebP.
+        const png = await encode("image/png");
+        return png ? { blob: png, contentType: "image/png" } : null;
     } catch {
         return null;
     }
+};
+export const projectNameFromFile = (fileName?: string): string => {
+    const base = (fileName || "")
+        .replace(/\.[a-z0-9]+$/i, "")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 60);
+    if (!base) return "";
+    return base.charAt(0).toUpperCase() + base.slice(1);
 };

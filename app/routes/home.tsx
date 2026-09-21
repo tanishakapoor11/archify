@@ -1,18 +1,23 @@
 import type { Route } from "./+types/home";
 import Navbar from "../../components/Navbar";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Clock,
-  Layers,
-  UploadIcon,
-} from "lucide-react";
+import { ArrowRight, Layers, Play } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import Upload from "../../components/Upload";
+import { ProjectGrid } from "../../components/ProjectGrid";
+import { Modal } from "../../components/ui/Modal";
 import { Link, useNavigate, useOutletContext } from "react-router";
+import {
+  ReactCompareSlider,
+  ReactCompareSliderImage,
+} from "react-compare-slider";
 import { useEffect, useRef, useState } from "react";
 import { createProject, getProjects } from "../../lib/puter.actions";
-import { ACCEPTED_IMAGE_LABEL, MAX_FILE_SIZE_MB } from "../../lib/constants";
+import { projectNameFromFile } from "../../lib/utils";
+import {
+  ACCEPTED_IMAGE_LABEL,
+  HOME_PROJECT_LIMIT,
+  MAX_FILE_SIZE_MB,
+} from "../../lib/constants";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -30,15 +35,20 @@ export default function Home() {
   const { userId, isSignedIn, signIn } = useOutletContext<AuthContext>();
   const [projects, setProjects] = useState<DesignItem[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
+  // Safety net: if the demo assets ever go missing, drop the CTA rather than
+  // opening a dialog onto broken images.
+  const [hasDemoAssets, setHasDemoAssets] = useState(true);
   const isCreatingProjectRef = useRef(false);
 
-  const handleUploadComplete = async (base64Image: string) => {
+  const handleUploadComplete = async (base64Image: string, fileName?: string) => {
     if (isCreatingProjectRef.current) return false;
     isCreatingProjectRef.current = true;
     try {
       const newId = crypto.randomUUID();
 
-      const name = `Residence ${newId}`;
+      const name =
+        projectNameFromFile(fileName) || `Residence ${newId.slice(0, 8)}`;
 
       const newItem = {
         id: newId,
@@ -106,9 +116,16 @@ export default function Home() {
             {" "}
             Start Building <ArrowRight className="icon" />{" "}
           </a>
-          <Button variant="outline" size="lg" className="demo">
-            Watch Demo
-          </Button>
+          {hasDemoAssets && (
+            <Button
+              variant="outline"
+              size="lg"
+              className="demo"
+              onClick={() => setIsDemoOpen(true)}
+            >
+              <Play className="w-4 h-4 mr-2" /> Watch Demo
+            </Button>
+          )}
         </div>
         <div id="upload" className="upload-shell">
           <div className="grid-overlay" />
@@ -128,6 +145,46 @@ export default function Home() {
         </div>
       </section>
 
+      <Modal
+        isOpen={isDemoOpen}
+        onClose={() => setIsDemoOpen(false)}
+        labelledBy="demo-modal-title"
+        size="wide"
+        showClose
+      >
+        <h3 id="demo-modal-title">See it work</h3>
+        <p>
+          The same apartment, before and after. Drag the handle to compare the
+          plan you upload with the render you get back.
+        </p>
+        <div className="demo-stage">
+          <ReactCompareSlider
+            defaultValue={50}
+            style={{ width: "100%", height: "100%" }}
+            itemOne={
+              <div className="demo-side">
+                <ReactCompareSliderImage
+                  src="/demo/before.webp"
+                  alt="Original 2D floor plan"
+                  onError={() => setHasDemoAssets(false)}
+                />
+                <span className="tag tag-before">2D plan</span>
+              </div>
+            }
+            itemTwo={
+              <div className="demo-side">
+                <ReactCompareSliderImage
+                  src="/demo/after.webp"
+                  alt="Photorealistic 3D render of the same floor plan"
+                  onError={() => setHasDemoAssets(false)}
+                />
+                <span className="tag tag-after">3D render</span>
+              </div>
+            }
+          />
+        </div>
+      </Modal>
+
       <section id="projects" className="projects">
         <div className="section-inner">
           <div className="section-head">
@@ -138,90 +195,22 @@ export default function Home() {
                 place.
               </p>
             </div>
-          </div>
-          <div className="projects-grid">
-            {isLoadingProjects &&
-              [0, 1, 2].map((i) => (
-                <div key={i} className="project-skeleton">
-                  <div className="preview" />
-                  <div className="lines">
-                    <span />
-                    <span />
-                  </div>
-                </div>
-              ))}
-
-            {!isLoadingProjects && projects.length === 0 && (
-              <div className="projects-empty">
-                <Layers className="mark" />
-                <h3>
-                  {isSignedIn ? "No projects yet" : "Sign in to see projects"}
-                </h3>
-                <p>
-                  {isSignedIn
-                    ? "Upload a floor plan above and your renders will show up here, alongside anything the community has shared."
-                    : "Sign in with Puter to upload a floor plan and browse what the community has shared."}
-                </p>
-                {!isSignedIn && (
-                  <Button size="sm" className="mt-5" onClick={() => signIn()}>
-                    Sign in with Puter
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {projects.map(
-              ({
-                id,
-                name,
-                renderedImage,
-                sourceImage,
-                timestamp,
-                ownerId,
-                isPublic,
-                sharedBy,
-              }) => {
-                const isMine = !ownerId || ownerId === userId;
-                return (
-                  <Link
-                    key={id}
-                    to={`/visualizer/${id}`}
-                    className="project-card group"
-                    viewTransition
-                  >
-                    <div className="preview">
-                      <img
-                        src={renderedImage || sourceImage}
-                        alt={`${name || "Untitled project"} floor plan render`}
-                      />
-                      {(!isMine || isPublic) && (
-                        <div className="badge">
-                          <span>{isMine ? "Public" : "Community"}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="card-body">
-                      <div>
-                        <h3>{name}</h3>
-                        <div className="meta">
-                          <Clock size="12" />
-                          <span>
-                            {new Date(timestamp).toLocaleDateString()}
-                          </span>
-                          <span>
-                            By {isMine ? "you" : sharedBy || "another user"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="arrow">
-                        <ArrowUpRight size="18" />
-                      </div>
-                    </div>
-                  </Link>
-                );
-              },
+            {projects.length > HOME_PROJECT_LIMIT && (
+              <Link to="/projects" className="see-all" viewTransition>
+                See all
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             )}
           </div>
+          <ProjectGrid
+            projects={projects}
+            isLoading={isLoadingProjects}
+            userId={userId}
+            isSignedIn={isSignedIn}
+            onSignIn={() => signIn()}
+            limit={HOME_PROJECT_LIMIT}
+          />
+
         </div>
       </section>
     </div>

@@ -5,7 +5,7 @@ import {
   getHostedUrl,
   getImageExtension,
   HOSTING_CONFIG_KEY,
-  imageUrlToPngBlob,
+  imageUrlToDisplayBlob,
   isHostedUrl,
 } from "./utils";
 
@@ -45,9 +45,7 @@ export const uploadImageToHosting = async ({
   try {
     const resolved =
       label === "rendered"
-        ? await imageUrlToPngBlob(url).then((blob) =>
-            blob ? { blob, contentType: "image/png" } : null,
-          )
+        ? await imageUrlToDisplayBlob(url)
         : await fetchBlobFromUrl(url);
     if (!resolved) return null;
     const contentType = resolved.contentType || resolved.blob.type || "";
