@@ -12,7 +12,7 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  const classes = ["btn", `btn--${variant}`, `btn--${size}`, fullWidth && "btn--full-width", className]
+  const classes = ["btn", `btn--${variant}`, `btn--${size}`, fullWidth && "btn--full", className]
     .filter(Boolean)
     .join(" ");
 

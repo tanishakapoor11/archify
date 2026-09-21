@@ -54,9 +54,46 @@
   }
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 active:scale-[0.97] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed;
 
     &.btn--primary {
       @apply bg-primary text-white hover:bg-[#EA580C] shadow-sm;
@@ -125,7 +162,7 @@
         }
 
         .links {
-          @apply hidden md:flex items-center space-x-6;
+          @apply hidden md:flex items-center space-x-6 list-none;
 
           a {
             @apply text-sm font-medium text-zinc-600 hover:text-black transition-colors;
@@ -149,22 +186,24 @@
         }
 
         .cta {
-          @apply inline-flex items-center justify-center rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 text-xs uppercase tracking-wide bg-primary text-white hover:bg-[#EA580C] shadow-sm;
+          @apply inline-flex items-center justify-center rounded-md font-medium transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 text-xs uppercase tracking-wide bg-primary text-white hover:bg-[#EA580C] shadow-sm;
         }
       }
     }
   }
 
-  .auth-modal {
-    @apply absolute inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4;
+  .modal {
+    @apply fixed inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4;
+    animation: fade-in 160ms ease-out both;
 
     .panel {
-      @apply bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center border border-zinc-200;
+      @apply bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 text-center border border-zinc-200;
+      animation: pop-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 
       .icon {
         @apply w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4;
 
-        .alert {
+        .mark {
           @apply text-primary w-6 h-6;
         }
       }
@@ -177,6 +216,18 @@
         @apply text-zinc-600 text-sm mb-6 leading-relaxed;
       }
 
+      .error {
+        @apply text-xs text-red-600 mb-4;
+      }
+
+      .copy-row {
+        @apply flex items-center gap-2 mb-6;
+
+        input {
+          @apply flex-1 min-w-0 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/40;
+        }
+      }
+
       .actions {
         @apply flex flex-col space-y-3;
 
@@ -185,7 +236,7 @@
         }
 
         .cancel {
-          @apply text-xs text-zinc-400 hover:text-black mt-2;
+          @apply text-xs text-zinc-400 hover:text-black mt-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
         }
       }
     }
@@ -223,6 +274,11 @@
         .help {
           @apply text-zinc-500 text-xs;
         }
+
+        .error {
+          @apply text-red-600 text-xs font-medium mt-2;
+          animation: fade-in-up 260ms ease-out both;
+        }
       }
 
       &:not(.is-dragging):hover .drop-icon {
@@ -232,6 +288,7 @@
 
     .upload-status {
       @apply h-48 rounded-xl border border-zinc-200 bg-white p-6 flex flex-col justify-center relative overflow-hidden;
+      animation: pop-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 
       .status-content {
         @apply relative z-10 flex flex-col items-center justify-center text-center;
@@ -336,6 +393,7 @@
 
         .render-img {
           @apply w-full h-full object-contain transition-all duration-700 opacity-100 scale-100;
+          animation: fade-in 500ms ease-out both;
         }
 
         &.is-processing {
@@ -354,6 +412,7 @@
 
         .render-overlay {
           @apply absolute inset-0 flex flex-col items-center justify-center z-30 bg-white/60 backdrop-blur-sm transition-opacity duration-300;
+          animation: fade-in 200ms ease-out both;
 
           .rendering-card {
             @apply bg-white px-6 py-4 rounded-xl border border-zinc-200 flex flex-col items-center shadow-2xl;
@@ -405,6 +464,22 @@
     .hero {
       @apply pt-32 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center text-center;
 
+      > * {
+        animation: fade-in-up 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      > *:nth-child(2) {
+        animation-delay: 80ms;
+      }
+      > *:nth-child(3) {
+        animation-delay: 160ms;
+      }
+      > *:nth-child(4) {
+        animation-delay: 240ms;
+      }
+      > *:nth-child(5) {
+        animation-delay: 320ms;
+      }
+
       .announce {
         @apply mb-8 inline-flex items-center px-3 py-1 rounded-md bg-white border border-zinc-200 shadow-sm;
 
@@ -433,7 +508,7 @@
         @apply flex flex-col sm:flex-row gap-4 justify-center mb-16;
 
         .cta {
-          @apply inline-flex items-center justify-center rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background px-8 py-3 text-sm uppercase tracking-wide font-bold bg-primary text-white hover:bg-[#ea580c] shadow-md;
+          @apply inline-flex items-center justify-center rounded-md transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background px-8 py-3 text-sm uppercase tracking-wide font-bold bg-primary text-white hover:bg-[#ea580c] shadow-md;
 
           .icon {
             @apply ml-2 w-4 h-4;
@@ -452,8 +527,8 @@
           @apply absolute inset-0 opacity-40 pointer-events-none;
 
           background-image:
-                  linear-gradient(#3b82f6 1px, transparent 1px),
-                  linear-gradient(90deg, #3b82f6 1px, transparent 1px);
+            linear-gradient(#3b82f6 1px, transparent 1px),
+            linear-gradient(90deg, #3b82f6 1px, transparent 1px);
 
           background-size: 60px 60px;
         }
@@ -510,11 +585,69 @@
           @apply flex items-center justify-center text-sm text-zinc-500;
         }
 
+        .projects-empty {
+          @apply col-span-full flex flex-col items-center justify-center text-center rounded-xl border border-dashed border-zinc-200 bg-white/50 py-16 px-6;
+          animation: fade-in-up 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+          .mark {
+            @apply w-10 h-10 text-zinc-300 mb-4;
+          }
+
+          h3 {
+            @apply text-lg font-serif font-bold text-black mb-1;
+          }
+
+          p {
+            @apply text-sm text-zinc-500 max-w-sm;
+          }
+        }
+
+        .project-skeleton {
+          @apply rounded-xl border border-zinc-200 bg-white overflow-hidden flex flex-col h-full;
+
+          .preview {
+            @apply aspect-4/3 bg-zinc-100 animate-pulse;
+          }
+
+          .lines {
+            @apply p-5 space-y-3;
+
+            span {
+              @apply block h-3 rounded bg-zinc-100 animate-pulse;
+
+              &:first-child {
+                @apply w-2/3 h-4;
+              }
+
+              &:last-child {
+                @apply w-1/3;
+              }
+            }
+          }
+        }
+
         .projects-grid {
           @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8;
 
           .project-card {
-            @apply relative bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full;
+            @apply relative bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col h-full;
+            animation: fade-in-up 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+            &:nth-child(2) {
+              animation-delay: 70ms;
+            }
+            &:nth-child(3) {
+              animation-delay: 140ms;
+            }
+            &:nth-child(4) {
+              animation-delay: 210ms;
+            }
+            &:nth-child(5) {
+              animation-delay: 280ms;
+            }
+            &:nth-child(n + 6) {
+              animation-delay: 350ms;
+            }
 
             .preview {
               @apply aspect-4/3 overflow-hidden bg-zinc-100 relative;

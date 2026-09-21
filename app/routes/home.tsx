@@ -9,27 +9,34 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import Upload from "../../components/Upload";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useOutletContext } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { createProject, getProjects } from "../../lib/puter.actions";
+import { ACCEPTED_IMAGE_LABEL, MAX_FILE_SIZE_MB } from "../../lib/constants";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Archify — AI floor plan to 3D render" },
+    {
+      name: "description",
+      content:
+        "Upload a 2D floor plan and get a photorealistic top-down 3D render.",
+    },
   ];
 }
 
 export default function Home() {
   const navigate = useNavigate();
+  const { userId, isSignedIn, signIn } = useOutletContext<AuthContext>();
   const [projects, setProjects] = useState<DesignItem[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const isCreatingProjectRef = useRef(false);
 
   const handleUploadComplete = async (base64Image: string) => {
     if (isCreatingProjectRef.current) return false;
     isCreatingProjectRef.current = true;
     try {
-      const newId = Date.now().toString(); // Generate a unique ID for the uploaded file
+      const newId = crypto.randomUUID();
 
       const name = `Residence ${newId}`;
 
@@ -41,10 +48,7 @@ export default function Home() {
         timestamp: Date.now(),
       };
 
-      const saved = await createProject({
-        item: newItem,
-        visibility: "private",
-      });
+      const saved = await createProject({ item: newItem });
       if (!saved) {
         console.error("Failed to create project.");
         return false;
@@ -64,12 +68,22 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const fetchProjects = async() => {
+    let isMounted = true;
+
+    const fetchProjects = async () => {
+      setIsLoadingProjects(true);
       const items = await getProjects();
-      setProjects(items)
-    }
+      if (!isMounted) return;
+      setProjects(items);
+      setIsLoadingProjects(false);
+    };
+
     fetchProjects();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isSignedIn]);
 
   return (
     <div className={"home"}>
@@ -96,7 +110,7 @@ export default function Home() {
             Watch Demo
           </Button>
         </div>
-        <div id="#upload" className="upload-shell">
+        <div id="upload" className="upload-shell">
           <div className="grid-overlay" />
           <div className="upload-card">
             <div className="upload-head">
@@ -104,14 +118,17 @@ export default function Home() {
                 <Layers className="icon" />
               </div>
               <h3>Upload your floor plan</h3>
-              <p>Supports JPG, PNG, formats up to 10MB </p>
+              <p>
+                Supports {ACCEPTED_IMAGE_LABEL} formats up to {MAX_FILE_SIZE_MB}
+                MB
+              </p>
             </div>
             <Upload onComplete={handleUploadComplete} />
           </div>
         </div>
       </section>
 
-      <section className="projects">
+      <section id="projects" className="projects">
         <div className="section-inner">
           <div className="section-head">
             <div className="copy">
@@ -123,34 +140,86 @@ export default function Home() {
             </div>
           </div>
           <div className="projects-grid">
-            {projects.map(
-              ({ id, name, renderedImage, sourceImage, timestamp }) => (
-                <Link
-                  key={id}
-                  to={`/visualizer/${id}`}
-                  className="project-card group"
-                >
-                  <div className="preview">
-                    <img src={renderedImage || sourceImage} alt="Project" />
-                    <div className="badge">
-                      <span>Community</span>
-                    </div>
+            {isLoadingProjects &&
+              [0, 1, 2].map((i) => (
+                <div key={i} className="project-skeleton">
+                  <div className="preview" />
+                  <div className="lines">
+                    <span />
+                    <span />
                   </div>
-                  <div className="card-body">
-                    <div>
-                      <h3>{name}</h3>
-                      <div className="meta">
-                        <Clock size="12" />
-                        <span>{new Date(timestamp).toLocaleDateString()}</span>
-                        <span>By Tanisha</span>
+                </div>
+              ))}
+
+            {!isLoadingProjects && projects.length === 0 && (
+              <div className="projects-empty">
+                <Layers className="mark" />
+                <h3>
+                  {isSignedIn ? "No projects yet" : "Sign in to see projects"}
+                </h3>
+                <p>
+                  {isSignedIn
+                    ? "Upload a floor plan above and your renders will show up here, alongside anything the community has shared."
+                    : "Sign in with Puter to upload a floor plan and browse what the community has shared."}
+                </p>
+                {!isSignedIn && (
+                  <Button size="sm" className="mt-5" onClick={() => signIn()}>
+                    Sign in with Puter
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {projects.map(
+              ({
+                id,
+                name,
+                renderedImage,
+                sourceImage,
+                timestamp,
+                ownerId,
+                isPublic,
+                sharedBy,
+              }) => {
+                const isMine = !ownerId || ownerId === userId;
+                return (
+                  <Link
+                    key={id}
+                    to={`/visualizer/${id}`}
+                    className="project-card group"
+                    viewTransition
+                  >
+                    <div className="preview">
+                      <img
+                        src={renderedImage || sourceImage}
+                        alt={`${name || "Untitled project"} floor plan render`}
+                      />
+                      {(!isMine || isPublic) && (
+                        <div className="badge">
+                          <span>{isMine ? "Public" : "Community"}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="card-body">
+                      <div>
+                        <h3>{name}</h3>
+                        <div className="meta">
+                          <Clock size="12" />
+                          <span>
+                            {new Date(timestamp).toLocaleDateString()}
+                          </span>
+                          <span>
+                            By {isMine ? "you" : sharedBy || "another user"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="arrow">
+                        <ArrowUpRight size="18" />
                       </div>
                     </div>
-                    <div className="arrow">
-                      <ArrowUpRight size="18" />
-                    </div>
-                  </div>
-                </Link>
-              ),
+                  </Link>
+                );
+              },
             )}
           </div>
         </div>

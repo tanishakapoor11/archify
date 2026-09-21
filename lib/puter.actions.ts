@@ -20,7 +20,6 @@ export const getCurrentUser = async () => {
 
 export const createProject = async ({
   item,
-  visibility = "private",
 }: CreateProjectParams): Promise<DesignItem | null | undefined> => {
   if (!PUTER_WORKER_URL) {
     console.log("Missing VITE_PUTER_WORKER_URL; skip hostory fetch;");
@@ -84,7 +83,7 @@ export const createProject = async ({
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project: payload, visibility }),
+        body: JSON.stringify({ project: payload }),
       },
     );
 
@@ -156,4 +155,34 @@ export const getProjectById = async ({ id }: { id: string }) => {
         console.error("Failed to fetch project:", error);
         return null;
     }
+};
+export const setProjectVisibility = async ({
+  id,
+  visibility,
+}: SetProjectVisibilityParams): Promise<DesignItem | null> => {
+  if (!PUTER_WORKER_URL) {
+    console.warn("Missing VITE_PUTER_WORKER_URL; skipping visibility update.");
+    return null;
+  }
+  try {
+    const response = await puter.workers.exec(
+      `${PUTER_WORKER_URL}/api/projects/visibility`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, visibility }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Failed to update visibility", await response.text());
+      return null;
+    }
+
+    const data = (await response.json()) as { project?: DesignItem | null };
+    return data?.project ?? null;
+  } catch (e) {
+    console.error("Failed to update visibility", e);
+    return null;
+  }
 };

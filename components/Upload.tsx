@@ -2,21 +2,21 @@ import { CheckCircle2, ImageIcon, UploadIcon } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
 import {
+  ACCEPTED_IMAGE_LABEL,
   ACCEPTED_IMAGE_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_MB,
   PROGRESS_INTERVAL_MS,
   PROGRESS_STEP,
   REDIRECT_DELAY_MS,
 } from "../lib/constants";
-
-type UploadProps = {
-  onComplete: (base64: string) => void;
-};
 
 const Upload = ({ onComplete }: UploadProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { isSignedIn } = useOutletContext<AuthContext>();
 
@@ -28,11 +28,33 @@ const Upload = ({ onComplete }: UploadProps) => {
     [],
   );
 
+  // The progress bar is cosmetic and finishes before the real work starts, so
+  // the hand-off has to report its own failure or the user is stranded here.
+  const handOff = async (base64: string) => {
+    setIsSaving(true);
+    try {
+      const ok = await onComplete(base64);
+      if (ok === false) throw new Error("save rejected");
+    } catch (e) {
+      console.error("Failed to create project: ", e);
+      setError("Could not save that project. Please try again.");
+      setFile(null);
+      setProgress(0);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const processFile = (selected: File) => {
     if (!isSignedIn) return;
 
     if (!ACCEPTED_IMAGE_TYPES.includes(selected.type)) {
-      setError("Only JPG and PNG files are supported.");
+      setError(`Only ${ACCEPTED_IMAGE_LABEL} files are supported.`);
+      return;
+    }
+
+    if (selected.size > MAX_FILE_SIZE_BYTES) {
+      setError(`That file is over ${MAX_FILE_SIZE_MB}MB. Try a smaller image.`);
       return;
     }
 
@@ -55,7 +77,7 @@ const Upload = ({ onComplete }: UploadProps) => {
           if (next < 100) return next;
 
           if (intervalRef.current) clearInterval(intervalRef.current);
-          setTimeout(() => onComplete(base64), REDIRECT_DELAY_MS);
+          setTimeout(() => void handOff(base64), REDIRECT_DELAY_MS);
           return 100;
         });
       }, PROGRESS_INTERVAL_MS);
@@ -97,7 +119,7 @@ const Upload = ({ onComplete }: UploadProps) => {
           <input
             type="file"
             className="drop-input"
-            accept=".jpg,.jpeg,.png"
+            accept={ACCEPTED_IMAGE_TYPES.join(",")}
             disabled={!isSignedIn}
             onChange={handleChange}
           />
@@ -110,7 +132,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                 ? "Click to upload or just drag and drop"
                 : "Sign in or Sign up with puter to upload "}
             </p>
-            <p className="help">Maximum file size 50MB</p>
+            <p className="help">Maximum file size {MAX_FILE_SIZE_MB}MB</p>
             {error && <p className="error">{error}</p>}
           </div>
         </div>
@@ -128,7 +150,11 @@ const Upload = ({ onComplete }: UploadProps) => {
             <div className="progress">
               <div className="bar" style={{ width: `${progress}%` }} />
               <p className="status-text">
-                {progress < 100 ? "Analyzing Floor Plan..." : "Redirecting..."}
+                {progress < 100
+                  ? "Analyzing Floor Plan..."
+                  : isSaving
+                    ? "Saving your project..."
+                    : "Redirecting..."}
               </p>
             </div>
           </div>

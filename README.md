@@ -1,88 +1,71 @@
-# Welcome to React Router!
+# Archify
 
-A modern, production-ready template for building full-stack React applications using React Router.
+Upload a 2D floor plan, get a photorealistic top-down 3D render. Renders are
+generated with Gemini via Puter, stored in Puter KV, and can be published to a
+shared community feed.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Stack
 
-## Features
+- React Router 8 (SSR) + React 19 + TypeScript
+- Tailwind CSS 4
+- [Puter](https://puter.com) for auth, KV storage, static hosting, and AI
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
+## Setup
 
 ```bash
 npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
+cp .env.example .env.local   # then fill in the worker URL
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+The app runs at `http://localhost:5173`.
 
-## Building for Production
+### Environment
 
-Create a production build:
+| Variable | Purpose |
+| --- | --- |
+| `VITE_PUTER_WORKER_URL` | Base URL of the deployed Puter worker |
+
+Without it, project save/list/get silently no-op and the upload flow reports a
+save failure.
+
+## The Puter worker
+
+[`lib/puter.worker.js`](lib/puter.worker.js) is deployed separately to Puter —
+it is not bundled by Vite. Redeploy it after any change there, or the client
+will call routes that do not exist yet.
+
+It uses two Puter identities:
+
+| Identity | Scope | Holds |
+| --- | --- | --- |
+| `user.puter.kv` | the calling user, isolated | private projects (`roomify_project_<id>`) |
+| `me.puter.kv` | the worker app, shared by all callers | published copies (`roomify_public_<id>`) |
+
+Because every caller can write to `me.puter.kv`, each mutation checks
+`ownerId` before touching a published record.
+
+### Routes
+
+| Route | Purpose |
+| --- | --- |
+| `POST /api/projects/save` | Write the private copy; re-sync a published copy you own |
+| `POST /api/projects/visibility` | Publish or unpublish (`{ id, visibility }`) |
+| `GET /api/projects/list` | Your projects merged with all published ones |
+| `GET /api/projects/get?id=` | Your copy, falling back to the published one |
+
+## Tests
+
+```bash
+node lib/puter.worker.test.mjs
+```
+
+Exercises the worker's visibility and ownership rules against stubbed
+`router` / `me` globals. No dependencies, no test runner.
+
+## Build
 
 ```bash
 npm run build
+npm run typecheck
 ```
-
-## Deployment
-
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
-# archify

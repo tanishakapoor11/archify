@@ -1,18 +1,36 @@
-import React from "react";
-import { Box } from "lucide-react";
+import React, { useState } from "react";
+import { Box, LogOut } from "lucide-react";
 import { Button } from "./ui/Button";
+import { Modal } from "./ui/Modal";
 import { useOutletContext } from "react-router";
 
 const Navbar = () => {
   const { isSignedIn, userName, signIn, signOut } =
     useOutletContext<AuthContext>();
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
   const handleAuthClick = async () => {
+    if (isSignedIn) return setIsLogoutOpen(true);
     try {
-      await (isSignedIn ? signOut() : signIn());
+      await signIn();
     } catch (error) {
       console.error("Puter auth failed: ", error);
     }
   };
+
+  const handleConfirmLogout = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      setIsLogoutOpen(false);
+    } catch (error) {
+      console.error("Puter auth failed: ", error);
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <header className={"navbar"}>
       <nav className={"inner"}>
@@ -22,10 +40,12 @@ const Navbar = () => {
             <span className={"name"}>Archify</span>
           </div>
           <ul className={"links"}>
-            <a href={"#"}>Product</a>
-            <a href={"#"}>Pricing</a>
-            <a href={"#"}>Community</a>
-            <a href={"#"}>Enterprise</a>
+            <li>
+              <a href={"#upload"}>Upload</a>
+            </li>
+            <li>
+              <a href={"#projects"}>Projects</a>
+            </li>
           </ul>
         </div>
         <div className={"actions"}>
@@ -56,6 +76,39 @@ const Navbar = () => {
           )}
         </div>
       </nav>
+
+      <Modal
+        isOpen={isLogoutOpen}
+        onClose={() => !isSigningOut && setIsLogoutOpen(false)}
+        labelledBy="logout-modal-title"
+      >
+        <div className="icon">
+          <LogOut className="mark" />
+        </div>
+        <h3 id="logout-modal-title">Log out of Archify?</h3>
+        <p>
+          {userName ? `You are signed in as ${userName}. ` : ""}
+          Your projects stay saved in your Puter account, and you can sign back
+          in at any time.
+        </p>
+        <div className="actions">
+          <Button
+            className="confirm"
+            disabled={isSigningOut}
+            onClick={handleConfirmLogout}
+          >
+            {isSigningOut ? "Logging out..." : "Log out"}
+          </Button>
+          <button
+            type="button"
+            className="cancel"
+            disabled={isSigningOut}
+            onClick={() => setIsLogoutOpen(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
     </header>
   );
 };
