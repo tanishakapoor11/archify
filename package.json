@@ -13,6 +13,7 @@
     "@heyputer/puter.js": "^2.6.3",
     "@react-router/node": "^8.4.0",
     "@react-router/serve": "^8.4.0",
+    "@vercel/analytics": "^2.0.1",
     "isbot": "^5.1.36",
     "lucide-react": "^1.47.0",
     "react": "^19.2.8",
